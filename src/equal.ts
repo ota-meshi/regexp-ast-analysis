@@ -63,10 +63,22 @@ export function structurallyEqual(x: Node | null, y: Node | null): boolean {
 
 		case "Backreference": {
 			const other = y as Backreference;
-			return (
-				structurallyEqual(x.resolved, other.resolved) &&
-				isStrictBackreference(x) == isStrictBackreference(other)
-			);
+			const groupsX = x.ambiguous ? x.resolved : [x.resolved];
+			const groupsY = other.ambiguous ? other.resolved : [other.resolved];
+			/**
+			 * Keep any groups of `y` that did not match anything.
+			 * If there are any groups remaining after searching the groups of `x`, they do not match.
+			 */
+			const unusedGroupsY = new Set(groupsY);
+			for (const groupX of groupsX) {
+				const matches = groupsY.filter(groupY => structurallyEqual(groupX, groupY));
+				if (matches.length === 0) return false;
+				for (const groupY of matches) {
+					unusedGroupsY.delete(groupY);
+				}
+			}
+			if (unusedGroupsY.size > 0) return false;
+			return isStrictBackreference(x) == isStrictBackreference(other);
 		}
 
 		case "Character": {

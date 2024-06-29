@@ -1,6 +1,7 @@
 import { CharSet } from "refa";
 import { Alternative, CapturingGroup, Element, Group, Quantifier } from "@eslint-community/regexpp/ast";
 import {
+	getReferencedGroupsFromBackreference,
 	isEmptyBackreference,
 	isLengthRangeMinZero,
 	isStrictBackreference,
@@ -219,8 +220,12 @@ function getElementPrefix(
 				return EMPTY_COMPLETE;
 			}
 			if (isStrictBackreference(element)) {
-				const inner = getElementPrefix(element.resolved, direction, { ...options, includeAfter: false }, flags);
-				return inner;
+				const groups = getReferencedGroupsFromBackreference(element);
+				const prefixes = groups.map(resolved =>
+					getElementPrefix(resolved, direction, { ...options, includeAfter: false }, flags)
+				);
+
+				return getAlternationPrefix(element, prefixes, direction, options, flags);
 			}
 
 			if (!mayLookAhead(element, options, direction, flags)) {
@@ -459,7 +464,6 @@ function isNextCharacterInsideAfter(
 		parent.type === "CharacterClassRange" ||
 		parent.type === "ClassIntersection" ||
 		parent.type === "ClassSubtraction" ||
-		parent.type === "ExpressionCharacterClass" ||
 		parent.type === "StringAlternative"
 	) {
 		throw new Error("Expected an element outside a character class.");

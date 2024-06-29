@@ -147,6 +147,14 @@ Object {
 }
 `;
 
+exports[`getFirstConsumedChar /(?:(?<foo>a)|(?<foo>b))\\k<foo>/ (ltr) 1`] = `
+Object {
+  "char": CharSet (65535) [61..62],
+  "empty": false,
+  "exact": true,
+}
+`;
+
 exports[`getFirstConsumedChar /(?:(a)|b)\\1/ (rtl) 1`] = `
 Object {
   "char": CharSet (65535) [61..62],

@@ -17,7 +17,7 @@ function* iter<T>(array: T | T[]): IterableIterator<T> {
 
 describe(RAA.getFirstConsumedChar.name, function () {
 	interface TestCase {
-		regexp: RegExp | RegExp[];
+		regexp: RegExp | RegExp[] | string;
 		direction?: MatchingDirection;
 	}
 
@@ -44,6 +44,8 @@ describe(RAA.getFirstConsumedChar.name, function () {
 		{ regexp: /(a)b\1/ },
 		{ regexp: /\1(a)/ },
 		{ regexp: /\1a|a(b)/ },
+
+		{ regexp: String.raw`/(?:(?<foo>a)|(?<foo>b))\k<foo>/` },
 
 		// assertions
 

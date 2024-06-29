@@ -392,11 +392,15 @@ function backreferenceIsPotentiallyEmpty(
 ): boolean {
 	if (isEmptyBackreference(back, flags)) {
 		return true;
-	} else if (hasSomeAncestor(back.resolved, a => a === root)) {
-		return !isStrictBackreference(back) || isPotentiallyZeroLengthImpl(back.resolved, root, flags);
-	} else {
-		return false;
 	}
+	const groups = getReferencedGroupsFromBackreference(back);
+	if (groups.length === 0) return true;
+	for (const group of groups.filter(group => hasSomeAncestor(group, a => a === root))) {
+		if (!isStrictBackreference(back) || isPotentiallyZeroLengthImpl(group, root, flags)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /**
@@ -749,19 +753,8 @@ export function getMatchingDirectionFromAssertionKind(
  *    - The backreference might be before the capturing group. E.g. `/\1(a)/`, `/(?:\1(a))+/`, `/(?<=(a)\1)b/`
  */
 export function isEmptyBackreference(backreference: Backreference, flags: ReadonlyFlags): boolean {
-	const group = backreference.resolved;
-
-	const closestAncestor = getClosestAncestor(backreference, group);
-
-	if (closestAncestor === group) {
-		// if the backreference is element of the referenced group
-		return true;
-	}
-
-	if (closestAncestor.type !== "Alternative") {
-		// if the closest common ancestor isn't an alternative => they're disjunctive.
-		return true;
-	}
+	const groups = getReferencedGroupsFromBackreference(backreference);
+	if (groups.length === 0) return true;
 
 	const backRefAncestors = new Set<Node>();
 	for (let a: Node | null = backreference; a; a = a.parent) {
@@ -812,7 +805,7 @@ export function isEmptyBackreference(backreference: Backreference, flags: Readon
 		}
 	}
 
-	return !findBackreference(group) || isZeroLength(group, flags);
+	return groups.every(group => !findBackreference(group) || isZeroLength(group, flags));
 }
 
 /**
@@ -840,19 +833,8 @@ export function isEmptyBackreference(backreference: Backreference, flags: Readon
  * - `/(?!(a)).\1/`
  */
 export function isStrictBackreference(backreference: Backreference): boolean {
-	const group = backreference.resolved;
-
-	const closestAncestor = getClosestAncestor(backreference, group);
-
-	if (closestAncestor === group) {
-		// if the backreference is element of the referenced group
-		return false;
-	}
-
-	if (closestAncestor.type !== "Alternative") {
-		// if the closest common ancestor isn't an alternative => they're disjunctive.
-		return false;
-	}
+	const groups = getReferencedGroupsFromBackreference(backreference);
+	if (groups.length === 0) return false;
 
 	const backRefAncestors = new Set<Node>();
 	for (let a: Node | null = backreference; a; a = a.parent) {
@@ -890,7 +872,15 @@ export function isStrictBackreference(backreference: Backreference): boolean {
 					// The captured text of a capturing group will be reset after leaving a negated lookaround
 					return false;
 				} else {
-					if (parentParent.alternatives.length > 1) {
+					if (
+						parentParent.alternatives.length > 1 &&
+						parentParent.alternatives.some(
+							alternative =>
+								!hasSomeDescendant(alternative, node => {
+									return node.type === "CapturingGroup" && groups.includes(node);
+								})
+						)
+					) {
 						// e.g.: (?:a|(a))+b\1
 						return false;
 					}
@@ -907,7 +897,7 @@ export function isStrictBackreference(backreference: Backreference): boolean {
 		}
 	}
 
-	return findBackreference(group);
+	return groups.every(findBackreference);
 }
 
 /**
@@ -1086,15 +1076,17 @@ function getLengthRangeElementImpl(
 			return getLengthRangeAlternativesImpl(element.alternatives, flags);
 
 		case "Backreference": {
-			if (isEmptyBackreference(element, flags)) {
+			const groups = getReferencedGroupsFromBackreference(element);
+			if (groups.length === 0) {
+				return ZERO_LENGTH_RANGE;
+			} else if (isEmptyBackreference(element, flags)) {
 				return ZERO_LENGTH_RANGE;
 			} else {
-				const resolvedRange = getLengthRangeElementImpl(element.resolved, flags);
-				if (resolvedRange.min > 0 && !isStrictBackreference(element)) {
-					return { min: 0, max: resolvedRange.max };
-				} else {
-					return resolvedRange;
-				}
+				const resolvedRanges = groups.map(group => getLengthRangeElementImpl(group, flags));
+				return {
+					min: isStrictBackreference(element) ? Math.min(...resolvedRanges.map(r => r.min)) : 0,
+					max: Math.max(...resolvedRanges.map(r => r.max)),
+				};
 			}
 		}
 
@@ -1189,11 +1181,11 @@ function isLengthRangeMinZeroElementImpl(
 			return isLengthRangeMinZeroAlternativesImpl(element.alternatives, flags);
 
 		case "Backreference": {
-			return (
-				isEmptyBackreference(element, flags) ||
-				!isStrictBackreference(element) ||
-				isLengthRangeMinZeroElementImpl(element.resolved, flags)
-			);
+			if (isEmptyBackreference(element, flags) || !isStrictBackreference(element)) {
+				return true;
+			}
+			const groups = getReferencedGroupsFromBackreference(element);
+			return groups.every(group => isLengthRangeMinZeroElementImpl(group, flags));
 		}
 
 		default:
@@ -1314,4 +1306,31 @@ export function getEffectiveMaximumRepetition(element: Node): number {
 		}
 	}
 	return max;
+}
+
+/**
+ * Returns the actually referenced capturing group from the given backreference.
+ *
+ * Actual referenced capturing group of a backreference is a capturing group that exists in the same alternative
+ * as the backreference and that does not have a backreference within it capturing group.
+ *
+ * ## Examples
+ *
+ * - `/(a)\1/`: This will return (a)
+ * - `/(a)(?:\1)/`: This will return (a)
+ * - `/(a)|\1/`: This will return empty
+ * - `/(a\1)/`: This will return empty
+ * - `/(?:(?<foo>a)|(?<foo>b))\k<foo>/`: This will return (?<foo>a) and (?<foo>b)
+ * - `/(?:(?<foo>a)|(?<foo>b)\k<foo>)/`: This will return (?<foo>b)
+ */
+export function getReferencedGroupsFromBackreference(back: Backreference): CapturingGroup[] {
+	return (back.ambiguous ? back.resolved : [back.resolved]).filter(group => {
+		const closestAncestor = getClosestAncestor(back, group);
+		return (
+			// A backreference cannot refer to the referenced group if it is element of the referenced group.
+			closestAncestor !== group &&
+			// If the closest common ancestor is an alternative, then they're not disjunctive.
+			closestAncestor.type === "Alternative"
+		);
+	});
 }

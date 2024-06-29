@@ -8,6 +8,7 @@ import {
 	isEmptyBackreference,
 	MatchingDirection,
 	invertMatchingDirection,
+	getReferencedGroupsFromBackreference,
 } from "./basic";
 import { toUnicodeSet } from "./to-char-set";
 import { followPaths } from "./follow";
@@ -718,21 +719,26 @@ function getFirstConsumedCharUncachedImpl(
 			if (isEmptyBackreference(element, flags)) {
 				return FirstConsumedChars.emptyConcat(flags);
 			}
-			let resolvedChar = getFirstConsumedCharImpl(element.resolved, direction, flags, options);
+			const groups = getReferencedGroupsFromBackreference(element);
 
-			// the resolved character is only exact if it is only a single character.
-			// i.e. /(\w)\1/ here the (\w) will capture exactly any word character, but the \1 can only match
-			// one word character and that is the only (\w) matched.
-			if (resolvedChar.exact && resolvedChar.char.size > 1) {
-				resolvedChar = { ...resolvedChar, exact: false };
-			}
+			const resolvedChars = groups.map(group => {
+				let resolvedChar = getFirstConsumedCharImpl(group, direction, flags, options);
+
+				// the resolved character is only exact if it is only a single character.
+				// i.e. /(\w)\1/ here the (\w) will capture exactly any word character, but the \1 can only match
+				// one word character and that is the only (\w) matched.
+				if (resolvedChar.exact && resolvedChar.char.size > 1) {
+					resolvedChar = { ...resolvedChar, exact: false };
+				}
+				return resolvedChar;
+			});
 
 			if (isStrictBackreference(element)) {
-				return resolvedChar;
+				return FirstConsumedChars.union(resolvedChars, flags);
 			} else {
 				// there is at least one path through which the backreference will (possibly) be replaced with the
 				// empty string
-				return FirstConsumedChars.makeOptional(resolvedChar);
+				return FirstConsumedChars.makeOptional(FirstConsumedChars.union(resolvedChars, flags));
 			}
 		}
 

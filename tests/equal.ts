@@ -4,8 +4,8 @@ import { assert } from "chai";
 
 describe(RAA.structurallyEqual.name, function () {
 	interface TestCase {
-		a: RegExp;
-		b: RegExp;
+		a: RegExp | string;
+		b: RegExp | string;
 		expected?: boolean;
 	}
 
@@ -47,6 +47,32 @@ describe(RAA.structurallyEqual.name, function () {
 		{ a: /(?=a)/, b: /(?=a)/ },
 		{ a: /(?=a)/, b: /(?!a)/, expected: false },
 		{ a: /(?=a)/, b: /(?<=a)/, expected: false },
+
+		{
+			a: String.raw`/(?:(?<foo>a)|(?<foo>b))\k<foo>/`,
+			b: String.raw`/(?:(?<bar>a)|(?<bar>b))\k<bar>/`,
+			expected: true,
+		},
+		{
+			a: String.raw`/(?:(?<foo>a)|(?<foo>b))\k<foo>/`,
+			b: String.raw`/(?:(?<foo>b)|(?<foo>a))\k<foo>/`,
+			expected: false,
+		},
+		{
+			a: String.raw`/(?:(?<foo>a)|(?<foo>b))\k<foo>/`,
+			b: String.raw`/(?:(?<foo>a)|(?<foo>b))\1/`,
+			expected: false,
+		},
+		{
+			a: String.raw`/(?:(?<foo>a)|(?<foo>a))\k<foo>/`,
+			b: String.raw`/(?:(?<foo>a)|(a))\1/`,
+			expected: false,
+		},
+		{
+			a: String.raw`/(?:(?<foo>a)|(?<foo>a))\k<foo>/`,
+			b: String.raw`/(?:(?<foo>a)|(?<foo>a))\1/`,
+			expected: false,
+		},
 	]);
 
 	function test(cases: TestCase[]): void {

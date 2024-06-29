@@ -6,7 +6,7 @@ import * as RAA from "../src";
 import { assert } from "chai";
 
 describe(RAA.isStrictBackreference.name, function () {
-	function test(expected: boolean, regexps: RegExp[]): void {
+	function test(expected: boolean, regexps: (RegExp | string)[]): void {
 		describe(`${expected}`, function () {
 			regexps
 				.map(r => new RegExpParser().parseLiteral(r.toString()))
@@ -21,7 +21,16 @@ describe(RAA.isStrictBackreference.name, function () {
 		});
 	}
 
-	test(true, [/(a)\1/, /(a)(?:b|\1)/, /(a)\1?/, /(?<=\1(a))b/, /(?!(a)\1)/]);
+	test(true, [
+		/(a)\1/,
+		/(a)(?:b|\1)/,
+		/(a)\1?/,
+		/(?<=\1(a))b/,
+		/(?!(a)\1)/,
+		/(?:(?<foo>a))\k<foo>/,
+		String.raw`/(?:(?<foo>a)|(?<foo>b))\k<foo>/`,
+		String.raw`/(?:(?<foo>a)|(?<foo>b)\k<foo>)/`,
+	]);
 	test(false, [
 		/(a)|\1/,
 		/(a\1)/,
@@ -31,11 +40,13 @@ describe(RAA.isStrictBackreference.name, function () {
 		/(?=\1(a))/,
 		/(?!(a))\w\1/,
 		/(?!(?!(a)))\w\1/,
+		String.raw`/(?:(?<foo>a)||(?<foo>b))\k<foo>/`,
+		String.raw`/(?:(?<foo>a)?|(?<foo>b))\k<foo>/`,
 	]);
 });
 
 describe(RAA.isEmptyBackreference.name, function () {
-	function test(expected: boolean, regexps: RegExp[]): void {
+	function test(expected: boolean, regexps: (RegExp | string)[]): void {
 		describe(`${expected}`, function () {
 			regexps
 				.map(r => new RegExpParser().parseLiteral(r.toString()))
@@ -60,8 +71,21 @@ describe(RAA.isEmptyBackreference.name, function () {
 		/(?!(a))\w\1/,
 		/(?!(?!(a)))\w\1/,
 		/(\3)(\1)(\2)/,
+		/(?:(?<foo>))\k<foo>/,
+		String.raw`/(?:(?<foo>)|(?<foo>))\k<foo>/`,
+		String.raw`/(?:(?<foo>)\k<foo>|(?<foo>b))/`,
 	]);
-	test(false, [/(?:(a)|b)\1/, /(a)?\1/, /(a)\1/, /(?=(a))\w\1/, /(?!(a)\1)/]);
+	test(false, [
+		/(?:(a)|b)\1/,
+		/(a)?\1/,
+		/(a)\1/,
+		/(?=(a))\w\1/,
+		/(?!(a)\1)/,
+		/(?:(?<foo>a))\k<foo>/,
+		String.raw`/(?:(?<foo>a)|(?<foo>))\k<foo>/`,
+		String.raw`/(?:(?<foo>)|(?<foo>b))\k<foo>/`,
+		String.raw`/(?:(?<foo>)|(?<foo>b)\k<foo>)/`,
+	]);
 });
 
 describe(RAA.getCapturingGroupNumber.name, function () {

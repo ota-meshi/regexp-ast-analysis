@@ -298,6 +298,9 @@ describe(RAA.getLengthRange.name, function () {
 		{ regexp: /(?:(a)|b)\1/, expected: { min: 1, max: 2 } },
 		{ regexp: /(a*)(?<backref>\1)/, expected: { min: 0, max: Infinity }, selectNamed: true },
 
+		{ regexp: String.raw`/(?:(?<foo>x)|(?<foo>abc))\k<foo>/`, expected: { min: 2, max: 6 } },
+		{ regexp: String.raw`/(?:(?<foo>x)|(?<foo>abc)\k<foo>)/`, expected: { min: 1, max: 6 } },
+
 		// Limitations:
 		// "All characters classes/sets are assumed to consume at least one characters and all assertions are assumed
 		// to have some accepting path."

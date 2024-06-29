@@ -339,7 +339,6 @@ export function followPaths<S>(
 			parent.type === "CharacterClassRange" ||
 			parent.type === "ClassIntersection" ||
 			parent.type === "ClassSubtraction" ||
-			parent.type === "ExpressionCharacterClass" ||
 			parent.type === "StringAlternative"
 		) {
 			throw new Error("The given element cannot be part of a character class.");
