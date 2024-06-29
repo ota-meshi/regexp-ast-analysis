@@ -268,3 +268,33 @@ describe("hasSomeAncestor and hasSomeDescendant condition", function () {
 		return nodes;
 	}
 });
+
+describe(RAA.getReferencedGroupsFromBackreference.name, function () {
+	interface TestCase {
+		regexp: RegExp | string;
+		expected?: string[];
+	}
+
+	test([
+		{ regexp: /(a)\1/, expected: ["(a)"] },
+		{ regexp: /(a)(?:\1)/, expected: ["(a)"] },
+		{ regexp: /(a)|\1/, expected: [] },
+		{ regexp: /(a\1)/, expected: [] },
+		{ regexp: String.raw`/(?:(?<foo>a)|(?<foo>b))\k<foo>/`, expected: ["(?<foo>a)", "(?<foo>b)"] },
+		{ regexp: String.raw`/(?:(?<foo>a)|(?<foo>b)\k<foo>)/`, expected: ["(?<foo>b)"] },
+	]);
+
+	function test(cases: TestCase[]): void {
+		for (const { regexp, expected } of cases) {
+			it(`${regexp}`, function () {
+				const { pattern } = new RegExpParser().parseLiteral(regexp.toString());
+				const [ref] = select(pattern, (e): e is Backreference => e.type === "Backreference");
+				const actual = RAA.getReferencedGroupsFromBackreference(ref);
+				assert.deepEqual(
+					actual.map(a => a.raw),
+					expected
+				);
+			});
+		}
+	}
+});
