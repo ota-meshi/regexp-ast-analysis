@@ -1,5 +1,19 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`getConsumedChars /(?:(?<foo>a)|(?<foo>b))\\k<foo>/ 1`] = `
+Object {
+  "chars": CharSet (65535) [61..62],
+  "exact": true,
+}
+`;
+
+exports[`getConsumedChars /(?:(?<foo>abc)|(?<foo>x))\\k<foo>/ 1`] = `
+Object {
+  "chars": CharSet (65535) [61..63, 78],
+  "exact": false,
+}
+`;
+
 exports[`getConsumedChars /(?:\\d*\\.\\d+|\\d+\\.\\d*)_/ 1`] = `
 Object {
   "chars": CharSet (65535) [2e, 30..39, 5f],

@@ -51,4 +51,6 @@ export const TEST_REGEXES: readonly (RegExp | string)[] = [
 	String.raw`/foo|[\q{bar}]/v`,
 	String.raw`/abc|\p{Basic_Emoji}/v`,
 	/(abc)(?:foo|bar|\1)/,
+	String.raw`/(?:(?<foo>a)|(?<foo>b))\k<foo>/`,
+	String.raw`/(?:(?<foo>abc)|(?<foo>x))\k<foo>/`,
 ];

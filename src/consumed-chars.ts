@@ -1,7 +1,7 @@
 import { Alternative, Element, Pattern } from "@eslint-community/regexpp/ast";
 import { CharSet } from "refa";
 import { ReadonlyFlags } from "./flags";
-import { hasSomeDescendant, isEmptyBackreference } from "./basic";
+import { getReferencedGroupsFromBackreference, hasSomeDescendant, isEmptyBackreference } from "./basic";
 import { Chars } from "./chars";
 import { toUnicodeSet } from "./to-char-set";
 
@@ -49,9 +49,11 @@ export function getConsumedChars(element: Element | Pattern | Alternative, flags
 
 				exact = exact && !c.isEmpty;
 			} else if (d.type === "Backreference" && !isEmptyBackreference(d, flags)) {
-				const c = getConsumedChars(d.resolved, flags);
-				sets.push(c.chars);
-				exact = exact && c.exact && c.chars.size < 2;
+				for (const resolved of getReferencedGroupsFromBackreference(d)) {
+					const c = getConsumedChars(resolved, flags);
+					sets.push(c.chars);
+					exact = exact && c.exact && c.chars.size < 2;
+				}
 			}
 
 			// always continue to the next element

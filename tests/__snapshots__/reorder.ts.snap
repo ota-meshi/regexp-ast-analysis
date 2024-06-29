@@ -1,5 +1,35 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`canReorder /(?:(?<foo>a)|(?<foo>b))\\k<foo>/ 1`] = `
+Object {
+  "(?:(?<foo>a)|(?<foo>b))": Object {
+    "(?<foo>a)|(?<foo>b)": Object {
+      "dir:ltr     ignoreCG:false": false,
+      "dir:ltr     ignoreCG:true ": true,
+      "dir:rtl     ignoreCG:false": false,
+      "dir:rtl     ignoreCG:true ": true,
+      "dir:unknown ignoreCG:false": false,
+      "dir:unknown ignoreCG:true ": true,
+    },
+  },
+}
+`;
+
+exports[`canReorder /(?:(?<foo>abc)|(?<foo>x))\\k<foo>/ 1`] = `
+Object {
+  "(?:(?<foo>abc)|(?<foo>x))": Object {
+    "(?<foo>abc)|(?<foo>x)": Object {
+      "dir:ltr     ignoreCG:false": false,
+      "dir:ltr     ignoreCG:true ": true,
+      "dir:rtl     ignoreCG:false": false,
+      "dir:rtl     ignoreCG:true ": true,
+      "dir:unknown ignoreCG:false": false,
+      "dir:unknown ignoreCG:true ": true,
+    },
+  },
+}
+`;
+
 exports[`canReorder /(?:\\d*\\.\\d+|\\d+\\.\\d*)_/ 1`] = `
 Object {
   "(?:\\\\d*\\\\.\\\\d+|\\\\d+\\\\.\\\\d*)": Object {
